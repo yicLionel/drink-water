@@ -12,6 +12,9 @@ const DEFAULT_STATE = {
 let state = loadState();
 let deferredPrompt = null;
 let reminderTimer = null;
+let islandExpanded = false;
+let islandNotice = null;
+let islandTimer = null;
 
 const app = document.querySelector('#app');
 
@@ -177,6 +180,7 @@ function addWater(amount, label = smartLabel()) {
   saveState();
   showToast(`已添加 ${amount}ml`);
   updateWaterView({ highlightedEntryId: entry.id });
+  showIslandNotice(amount);
 }
 
 function smartLabel() {
@@ -224,6 +228,28 @@ function removeEntry(id) {
   updateWaterView();
 }
 
+function showIslandNotice(amount) {
+  clearTimeout(islandTimer);
+  islandExpanded = true;
+  islandNotice = {
+    title: `已添加 ${amount}ml`,
+    detail: statusMessage()
+  };
+  updateDynamicIslandView();
+  islandTimer = setTimeout(() => {
+    islandNotice = null;
+    islandExpanded = false;
+    updateDynamicIslandView();
+  }, 2400);
+}
+
+function toggleDynamicIsland() {
+  clearTimeout(islandTimer);
+  islandNotice = null;
+  islandExpanded = !islandExpanded;
+  updateDynamicIslandView();
+}
+
 function showToast(message) {
   const toast = document.createElement('div');
   toast.className = 'toast';
@@ -246,6 +272,8 @@ function render() {
   app.innerHTML = `
     <main class="app-shell" aria-label="咕噜喝水应用">
       <section class="phone-frame">
+        ${renderDynamicIsland()}
+
         <header class="topbar">
           <button class="icon-button" type="button" aria-label="打开菜单">
             ${icon('menu')}
@@ -401,7 +429,35 @@ function updateWaterView({ highlightedEntryId } = {}) {
   speech.textContent = statusMessage();
   historyTotal.textContent = `总计 ${total} ml`;
   historyList.innerHTML = renderHistoryList(highlightedEntryId);
+  updateDynamicIslandView();
   bindHistoryEvents();
+}
+
+function updateDynamicIslandView() {
+  const island = app.querySelector('[data-live="dynamic-island"]');
+  const title = app.querySelector('[data-live="island-title"]');
+  const detail = app.querySelector('[data-live="island-detail"]');
+  const percent = app.querySelector('[data-live="island-percent"]');
+  const total = app.querySelector('[data-live="island-total"]');
+  const progress = app.querySelector('[data-live="island-progress"]');
+  const latest = app.querySelector('[data-live="island-latest"]');
+  const button = app.querySelector('[data-action="island-toggle"]');
+  const view = getDynamicIslandViewState();
+
+  if (!island || !title || !detail || !percent || !total || !progress || !latest || !button) {
+    render();
+    return;
+  }
+
+  island.classList.toggle('dynamic-island--expanded', islandExpanded);
+  island.classList.toggle('dynamic-island--notice', Boolean(islandNotice));
+  button.setAttribute('aria-expanded', String(islandExpanded));
+  title.textContent = view.title;
+  detail.textContent = view.detail;
+  percent.textContent = view.percent;
+  total.textContent = view.total;
+  progress.style.setProperty('--progress', view.ratio);
+  latest.textContent = view.latest;
 }
 
 function updateIntervalView() {
@@ -494,6 +550,50 @@ function getInstallViewState() {
   };
 }
 
+function getDynamicIslandViewState() {
+  const total = totalIntake();
+  const ratio = progressRatio();
+  const percent = `${Math.round(ratio * 100)}%`;
+  const remaining = Math.max(state.target - total, 0);
+  const latest = state.entries[0];
+  const defaultTitle = remaining === 0 ? '今日已达标' : '今日补水';
+
+  return {
+    ratio,
+    percent,
+    title: islandNotice?.title ?? defaultTitle,
+    detail: islandNotice?.detail ?? statusMessage(),
+    total: `${total}/${state.target}ml`,
+    latest: latest ? `${latest.time} ${latest.amount}ml` : '还没有记录'
+  };
+}
+
+function renderDynamicIsland() {
+  const view = getDynamicIslandViewState();
+
+  return `
+    <section class="dynamic-island ${islandExpanded ? 'dynamic-island--expanded' : ''} ${islandNotice ? 'dynamic-island--notice' : ''}" data-live="dynamic-island" aria-label="灵动岛喝水状态">
+      <button class="dynamic-island__surface" type="button" data-action="island-toggle" aria-expanded="${islandExpanded}">
+        <span class="dynamic-island__orb" aria-hidden="true">${icon('drop')}</span>
+        <span class="dynamic-island__copy">
+          <span data-live="island-title">${view.title}</span>
+          <small data-live="island-detail">${view.detail}</small>
+        </span>
+        <span class="dynamic-island__percent" data-live="island-percent">${view.percent}</span>
+      </button>
+      <div class="dynamic-island__panel" aria-hidden="${islandExpanded ? 'false' : 'true'}">
+        <div class="dynamic-island__bar" data-live="island-progress" style="--progress:${view.ratio}">
+          <span></span>
+        </div>
+        <div class="dynamic-island__meta">
+          <span data-live="island-total">${view.total}</span>
+          <span data-live="island-latest">${view.latest}</span>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function restartAnimation(element, className) {
   element.classList.remove(className);
   void element.offsetWidth;
@@ -522,6 +622,7 @@ function renderHistoryList(highlightedEntryId) {
 }
 
 function bindEvents() {
+  app.querySelector('[data-action="island-toggle"]')?.addEventListener('click', toggleDynamicIsland);
   app.querySelectorAll('[data-action="add"]').forEach((button) => {
     button.addEventListener('click', () => addWater(Number(button.dataset.amount)));
   });
