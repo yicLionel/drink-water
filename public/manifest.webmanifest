@@ -1,0 +1,42 @@
+{
+  "name": "咕噜喝水",
+  "short_name": "咕噜喝水",
+  "description": "可安装、可离线使用的喝水提醒 PWA。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6fbff",
+  "theme_color": "#65d6c5",
+  "categories": ["health", "productivity", "lifestyle"],
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "添加 250ml",
+      "short_name": "250ml",
+      "description": "快速记录一杯 250ml 的水",
+      "url": "/?quick=250",
+      "icons": [
+        {
+          "src": "/icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}
