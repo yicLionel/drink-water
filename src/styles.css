@@ -14,6 +14,12 @@
   --shadow: 0 18px 45px rgba(40, 116, 158, 0.14);
 }
 
+@property --progress {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -193,6 +199,7 @@ button {
   border-radius: 50%;
   background: conic-gradient(var(--mint) calc(var(--progress) * 360deg), #36a9ef calc(var(--progress) * 360deg), rgba(202,232,239,.58) 0);
   box-shadow: inset 0 0 0 16px rgba(255,255,255,.7);
+  transition: --progress .55s cubic-bezier(.2, .72, .18, 1), transform .22s ease, box-shadow .22s ease;
 }
 
 .progress-track {
@@ -220,7 +227,9 @@ button {
 }
 
 .progress-copy strong {
+  display: inline-block;
   font-size: 32px;
+  transition: color .22s ease, transform .22s ease;
 }
 
 .progress-copy small {
@@ -278,6 +287,12 @@ button {
   background: #fff;
   font-weight: 800;
   box-shadow: 0 9px 18px rgba(40, 116, 158, .08);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.amount-button:active {
+  transform: translateY(1px) scale(.98);
+  box-shadow: 0 5px 12px rgba(40, 116, 158, .08);
 }
 
 .amount-button--150 {
@@ -438,6 +453,10 @@ button {
   text-align: left;
 }
 
+.history-row--new {
+  animation: historyRowIn .42s cubic-bezier(.2, .72, .18, 1) both;
+}
+
 .history-row:last-child {
   border-bottom: 0;
 }
@@ -517,6 +536,12 @@ button {
   border-radius: 50%;
   background: #dcfff4;
   box-shadow: 0 12px 24px rgba(17, 185, 155, .22);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.nav-action:active {
+  transform: translateY(1px) scale(.97);
+  box-shadow: 0 8px 18px rgba(17, 185, 155, .2);
 }
 
 .nav-action > span:last-child {
@@ -704,8 +729,31 @@ button {
     animation: floaty 3.2s ease-in-out infinite;
   }
 
+  .progress-ring--bump {
+    animation: ringBump .46s ease;
+  }
+
   @keyframes floaty {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
+  }
+
+  @keyframes ringBump {
+    0% { transform: scale(1); }
+    42% { transform: scale(1.025); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes historyRowIn {
+    0% {
+      opacity: 0;
+      transform: translateY(-10px);
+      background: #eafff8;
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+      background: #fff;
+    }
   }
 }

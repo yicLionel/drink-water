@@ -23,12 +23,12 @@ const app = document.querySelector('#app');
 window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault();
   deferredPrompt = event;
-  render();
+  updateInstallView();
 });
 
 window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
-  render();
+  updateInstallView();
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -126,7 +126,7 @@ async function askNotificationPermission() {
   } else {
     showToast('通知未开启，可以稍后再试');
   }
-  render();
+  updateNotificationView();
 }
 
 async function notify(title, body) {
@@ -168,22 +168,20 @@ function refreshReminder() {
 
 function addWater(amount, label = smartLabel()) {
   const now = new Date();
+  const entry = {
+    id: crypto.randomUUID(),
+    amount,
+    label,
+    time: now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    createdAt: now.toISOString()
+  };
   state = {
     ...state,
-    entries: [
-      {
-        id: crypto.randomUUID(),
-        amount,
-        label,
-        time: now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        createdAt: now.toISOString()
-      },
-      ...state.entries
-    ].slice(0, 24)
+    entries: [entry, ...state.entries].slice(0, 24)
   };
   saveState();
   showToast(`已添加 ${amount}ml`);
-  render();
+  updateWaterView({ highlightedEntryId: entry.id });
 }
 
 function smartLabel() {
@@ -206,7 +204,7 @@ async function installApp() {
   deferredPrompt.prompt();
   await deferredPrompt.userChoice;
   deferredPrompt = null;
-  render();
+  updateInstallView();
 }
 
 function setIntervalMinutes(minutes) {
@@ -214,20 +212,21 @@ function setIntervalMinutes(minutes) {
   saveState();
   localStorage.removeItem(REMINDER_STORAGE_KEY);
   refreshReminder();
-  render();
+  updateIntervalView();
+  updateNotificationView();
 }
 
 function updateTarget(value) {
   const target = Math.max(500, Math.min(Number(value) || 2000, 5000));
   state = { ...state, target };
   saveState();
-  render();
+  updateWaterView();
 }
 
 function removeEntry(id) {
   state = { ...state, entries: state.entries.filter((entry) => entry.id !== id) };
   saveState();
-  render();
+  updateWaterView();
 }
 
 function showToast(message) {
@@ -246,31 +245,8 @@ function render() {
   const total = totalIntake();
   const ratio = progressRatio();
   const remaining = Math.max(state.target - total, 0);
-  const permission = getNotificationPermission();
-  const notificationReady = state.notificationsEnabled && permission === 'granted';
-  const notificationBlocked = permission === 'denied' || permission === 'unsupported';
-  const standalone = isStandalone();
-  const notificationDescription = notificationReady
-    ? '准时提醒，不错过每一杯水'
-    : permission === 'denied'
-      ? '浏览器已拒绝，请到系统设置中开启'
-      : permission === 'unsupported'
-        ? '当前浏览器不支持系统通知'
-        : '开启后按间隔发送系统提醒';
-  const notificationMeta = notificationReady
-    ? '已授权'
-    : permission === 'denied'
-      ? '已拒绝'
-      : permission === 'unsupported'
-        ? '不支持通知'
-        : '等待授权';
-  const notificationButtonLabel = notificationReady
-    ? '已开启'
-    : permission === 'denied'
-      ? '需到设置'
-      : permission === 'unsupported'
-        ? '不支持'
-        : '开启通知';
+  const notificationView = getNotificationViewState();
+  const installView = getInstallViewState();
 
   app.innerHTML = `
     <main class="app-shell" aria-label="咕噜喝水应用">
@@ -299,17 +275,17 @@ function render() {
           <span class="hint-chip">${icon('spark')} 目标建议</span>
         </section>
 
-        <section class="progress-zone" aria-label="今日喝水进度">
-          <div class="progress-ring" style="--progress:${ratio}">
+        <section class="progress-zone" aria-label="今日喝水进度" data-live="progress-zone">
+          <div class="progress-ring" style="--progress:${ratio}" data-live="progress-ring">
             <div class="progress-track">
               <div class="mascot" aria-hidden="true">${dropMascot('large')}</div>
             </div>
           </div>
           <div class="progress-copy">
-            <span>已喝 <strong>${total}</strong> ml</span>
-            <small>${Math.round(ratio * 100)}%</small>
+            <span>已喝 <strong data-live="total">${total}</strong> ml</span>
+            <small data-live="percent">${Math.round(ratio * 100)}%</small>
           </div>
-          <div class="speech">${statusMessage()}</div>
+          <div class="speech" data-live="speech">${statusMessage()}</div>
         </section>
 
         <section class="quick-add" aria-labelledby="add-title">
@@ -335,7 +311,7 @@ function render() {
             ${icon('clock')}
             <h2 id="interval-title">提醒间隔</h2>
           </div>
-          <div class="segmented" role="group" aria-label="提醒间隔">
+          <div class="segmented" role="group" aria-label="提醒间隔" data-live="interval-group">
             ${[30, 60, 90, 120].map((minutes) => `
               <button type="button" class="${state.interval === minutes ? 'is-active' : ''}" data-action="interval" data-minutes="${minutes}">
                 ${minutes}分钟
@@ -344,60 +320,47 @@ function render() {
           </div>
         </section>
 
-        <section class="status-card" aria-labelledby="notify-title">
+        <section class="status-card" aria-labelledby="notify-title" data-live="notification-card">
           <div class="status-main">
             <div class="status-icon status-icon--coral">${icon('bell')}</div>
             <div>
               <h2 id="notify-title">通知提醒</h2>
-              <p>${notificationDescription}</p>
+              <p data-live="notification-description">${notificationView.description}</p>
             </div>
-            <button class="primary-button" type="button" data-action="notify" ${notificationBlocked ? 'disabled' : ''}>
-              ${notificationButtonLabel} ${icon('chevron')}
+            <button class="primary-button" type="button" data-action="notify" ${notificationView.blocked ? 'disabled' : ''}>
+              <span data-live="notification-button-label">${notificationView.buttonLabel}</span> ${icon('chevron')}
             </button>
           </div>
           <div class="meta-row">
-            <span>${icon(notificationReady ? 'check' : 'info')} ${notificationMeta}</span>
-            <span>下次提醒：${notificationReady ? formatNextReminder() : '--:--'}</span>
+            <span data-live="notification-meta">${icon(notificationView.ready ? 'check' : 'info')} ${notificationView.meta}</span>
+            <span data-live="notification-next">下次提醒：${notificationView.ready ? formatNextReminder() : '--:--'}</span>
           </div>
         </section>
 
-        <section class="status-card" aria-labelledby="install-title">
+        <section class="status-card" aria-labelledby="install-title" data-live="install-card">
           <div class="status-main">
             <div class="status-icon status-icon--blue">${icon('download')}</div>
             <div>
               <h2 id="install-title">安装到桌面</h2>
-              <p>${standalone ? '已用桌面应用模式打开' : '一键安装，离线也能打开'}</p>
+              <p data-live="install-description">${installView.description}</p>
             </div>
             <button class="secondary-button" type="button" data-action="install">
-              ${standalone ? '已安装' : '安装到桌面'} ${icon('chevron')}
+              <span data-live="install-button-label">${installView.buttonLabel}</span> ${icon('chevron')}
             </button>
           </div>
           <div class="meta-row">
             <span>${icon('check')} PWA 已就绪，支持离线使用</span>
-            <span>${canInstall() || standalone ? '可安装' : '待浏览器触发'}</span>
+            <span data-live="install-meta">${installView.meta}</span>
           </div>
         </section>
 
         <section class="history" aria-labelledby="history-title">
           <div class="section-heading">
             <h2 id="history-title">${dropMascot('tiny')} 今日记录</h2>
-            <span>总计 ${total} ml</span>
+            <span data-live="history-total">总计 ${total} ml</span>
           </div>
-          <div class="history-list">
-            ${state.entries.length ? state.entries.map((entry) => `
-              <button class="history-row" type="button" data-action="remove" data-id="${entry.id}" aria-label="删除 ${entry.time} ${entry.amount}ml 记录">
-                <span class="timeline-dot"></span>
-                <span class="history-time">${entry.time}</span>
-                <span class="history-amount">${icon('cup')} ${entry.amount}ml</span>
-                <span class="history-label">${entry.label}</span>
-                ${icon('chevron')}
-              </button>
-            `).join('') : `
-              <div class="empty-state">
-                ${dropMascot('small')}
-                <p>今天还没有记录，先喝第一杯吧。</p>
-              </div>
-            `}
+          <div class="history-list" data-live="history-list">
+            ${renderHistoryList()}
           </div>
         </section>
 
@@ -421,6 +384,148 @@ function render() {
   bindEvents();
 }
 
+function updateWaterView({ highlightedEntryId } = {}) {
+  const total = totalIntake();
+  const ratio = progressRatio();
+  const ring = app.querySelector('[data-live="progress-ring"]');
+  const totalValue = app.querySelector('[data-live="total"]');
+  const percent = app.querySelector('[data-live="percent"]');
+  const speech = app.querySelector('[data-live="speech"]');
+  const historyTotal = app.querySelector('[data-live="history-total"]');
+  const historyList = app.querySelector('[data-live="history-list"]');
+
+  if (!ring || !totalValue || !percent || !speech || !historyTotal || !historyList) {
+    render();
+    return;
+  }
+
+  ring.style.setProperty('--progress', ratio);
+  restartAnimation(ring, 'progress-ring--bump');
+  totalValue.textContent = total;
+  percent.textContent = `${Math.round(ratio * 100)}%`;
+  speech.textContent = statusMessage();
+  historyTotal.textContent = `总计 ${total} ml`;
+  historyList.innerHTML = renderHistoryList(highlightedEntryId);
+  bindHistoryEvents();
+}
+
+function updateIntervalView() {
+  const intervalGroup = app.querySelector('[data-live="interval-group"]');
+  if (!intervalGroup) {
+    render();
+    return;
+  }
+
+  intervalGroup.querySelectorAll('[data-action="interval"]').forEach((button) => {
+    button.classList.toggle('is-active', Number(button.dataset.minutes) === state.interval);
+  });
+}
+
+function updateNotificationView() {
+  const notificationView = getNotificationViewState();
+  const description = app.querySelector('[data-live="notification-description"]');
+  const button = app.querySelector('[data-action="notify"]');
+  const buttonLabel = app.querySelector('[data-live="notification-button-label"]');
+  const meta = app.querySelector('[data-live="notification-meta"]');
+  const next = app.querySelector('[data-live="notification-next"]');
+
+  if (!description || !button || !buttonLabel || !meta || !next) {
+    render();
+    return;
+  }
+
+  description.textContent = notificationView.description;
+  button.disabled = notificationView.blocked;
+  buttonLabel.textContent = notificationView.buttonLabel;
+  meta.innerHTML = `${icon(notificationView.ready ? 'check' : 'info')} ${notificationView.meta}`;
+  next.textContent = `下次提醒：${notificationView.ready ? formatNextReminder() : '--:--'}`;
+}
+
+function updateInstallView() {
+  const installView = getInstallViewState();
+  const description = app.querySelector('[data-live="install-description"]');
+  const buttonLabel = app.querySelector('[data-live="install-button-label"]');
+  const meta = app.querySelector('[data-live="install-meta"]');
+
+  if (!description || !buttonLabel || !meta) {
+    render();
+    return;
+  }
+
+  description.textContent = installView.description;
+  buttonLabel.textContent = installView.buttonLabel;
+  meta.textContent = installView.meta;
+}
+
+function getNotificationViewState() {
+  const permission = getNotificationPermission();
+  const ready = state.notificationsEnabled && permission === 'granted';
+  const blocked = permission === 'denied' || permission === 'unsupported';
+
+  return {
+    ready,
+    blocked,
+    description: ready
+      ? '准时提醒，不错过每一杯水'
+      : permission === 'denied'
+        ? '浏览器已拒绝，请到系统设置中开启'
+        : permission === 'unsupported'
+          ? '当前浏览器不支持系统通知'
+          : '开启后按间隔发送系统提醒',
+    meta: ready
+      ? '已授权'
+      : permission === 'denied'
+        ? '已拒绝'
+        : permission === 'unsupported'
+          ? '不支持通知'
+          : '等待授权',
+    buttonLabel: ready
+      ? '已开启'
+      : permission === 'denied'
+        ? '需到设置'
+        : permission === 'unsupported'
+          ? '不支持'
+          : '开启通知'
+  };
+}
+
+function getInstallViewState() {
+  const standalone = isStandalone();
+
+  return {
+    description: standalone ? '已用桌面应用模式打开' : '一键安装，离线也能打开',
+    buttonLabel: standalone ? '已安装' : '安装到桌面',
+    meta: canInstall() || standalone ? '可安装' : '待浏览器触发'
+  };
+}
+
+function restartAnimation(element, className) {
+  element.classList.remove(className);
+  void element.offsetWidth;
+  element.classList.add(className);
+}
+
+function renderHistoryList(highlightedEntryId) {
+  if (!state.entries.length) {
+    return `
+      <div class="empty-state">
+        ${dropMascot('small')}
+        <p>今天还没有记录，先喝第一杯吧。</p>
+      </div>
+    `;
+  }
+
+  return state.entries.map((entry) => `
+    <button class="history-row ${entry.id === highlightedEntryId ? 'history-row--new' : ''}" type="button" data-action="remove" data-id="${entry.id}" aria-label="删除 ${entry.time} ${entry.amount}ml 记录">
+      <span class="timeline-dot"></span>
+      <span class="history-time">${entry.time}</span>
+      <span class="history-amount">${icon('cup')} ${entry.amount}ml</span>
+      <span class="history-label">${entry.label}</span>
+      ${icon('chevron')}
+    </button>
+  `).join('');
+}
+
 function bindEvents() {
   app.querySelectorAll('[data-action="add"]').forEach((button) => {
     button.addEventListener('click', () => addWater(Number(button.dataset.amount)));
@@ -434,7 +539,13 @@ function bindEvents() {
   });
   app.querySelector('[data-action="notify"]')?.addEventListener('click', askNotificationPermission);
   app.querySelector('[data-action="install"]')?.addEventListener('click', installApp);
-  app.querySelector('[data-action="target"]')?.addEventListener('change', (event) => updateTarget(event.target.value));
+  const targetInput = app.querySelector('[data-action="target"]');
+  targetInput?.addEventListener('input', (event) => updateTarget(event.target.value));
+  targetInput?.addEventListener('change', (event) => updateTarget(event.target.value));
+  bindHistoryEvents();
+}
+
+function bindHistoryEvents() {
   app.querySelectorAll('[data-action="remove"]').forEach((button) => {
     button.addEventListener('click', () => {
       removeEntry(button.dataset.id);
