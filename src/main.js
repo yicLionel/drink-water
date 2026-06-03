@@ -6,12 +6,7 @@ const DEFAULT_STATE = {
   target: 2000,
   interval: 60,
   notificationsEnabled: false,
-  entries: [
-    { id: crypto.randomUUID(), amount: 250, label: '早餐后', time: '09:15', createdAt: todayAt('09:15') },
-    { id: crypto.randomUUID(), amount: 150, label: '学习中', time: '10:30', createdAt: todayAt('10:30') },
-    { id: crypto.randomUUID(), amount: 350, label: '午餐后', time: '13:00', createdAt: todayAt('13:00') },
-    { id: crypto.randomUUID(), amount: 200, label: '下午茶', time: '15:30', createdAt: todayAt('15:30') }
-  ]
+  entries: []
 };
 
 let state = loadState();
