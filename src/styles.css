@@ -78,149 +78,6 @@ button {
   display: none;
 }
 
-.dynamic-island {
-  position: sticky;
-  top: 0;
-  z-index: 8;
-  display: grid;
-  justify-items: center;
-  margin: -6px 0 16px;
-  pointer-events: none;
-}
-
-.dynamic-island__surface {
-  position: relative;
-  z-index: 2;
-  width: 186px;
-  min-height: 44px;
-  display: grid;
-  grid-template-columns: 28px 1fr auto;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 12px;
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 999px;
-  color: #fff;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(67, 167, 238, .34), transparent 42%),
-    linear-gradient(135deg, #05070c, #18212d);
-  box-shadow: 0 16px 34px rgba(11, 25, 42, .2);
-  pointer-events: auto;
-  transition: width .28s cubic-bezier(.2, .72, .18, 1), border-radius .28s ease, transform .2s ease, box-shadow .2s ease;
-}
-
-.dynamic-island__surface:active {
-  transform: scale(.985);
-}
-
-.dynamic-island__orb {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  color: #8fe6ff;
-  background: rgba(255,255,255,.1);
-}
-
-.dynamic-island__copy {
-  min-width: 0;
-  display: grid;
-  gap: 1px;
-  text-align: left;
-}
-
-.dynamic-island__copy span {
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: 850;
-  line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dynamic-island__copy small {
-  display: none;
-  overflow: hidden;
-  color: rgba(255,255,255,.68);
-  font-size: 11px;
-  font-weight: 650;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dynamic-island__percent {
-  min-width: 40px;
-  color: #b8fff0;
-  font-size: 13px;
-  font-weight: 900;
-  text-align: right;
-}
-
-.dynamic-island__panel {
-  width: 286px;
-  max-height: 0;
-  overflow: hidden;
-  padding: 0 14px;
-  border-radius: 0 0 24px 24px;
-  color: #fff;
-  background: linear-gradient(180deg, rgba(10, 17, 28, .96), rgba(19, 30, 43, .94));
-  box-shadow: 0 16px 34px rgba(11, 25, 42, .16);
-  opacity: 0;
-  pointer-events: auto;
-  transform: translateY(-18px) scale(.96);
-  transition: max-height .28s cubic-bezier(.2, .72, .18, 1), opacity .2s ease, padding .28s ease, transform .28s cubic-bezier(.2, .72, .18, 1);
-}
-
-.dynamic-island__bar {
-  height: 7px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(255,255,255,.14);
-}
-
-.dynamic-island__bar span {
-  display: block;
-  width: calc(var(--progress) * 100%);
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--mint), #8fe6ff, var(--coral));
-  transition: width .5s cubic-bezier(.2, .72, .18, 1);
-}
-
-.dynamic-island__meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 9px;
-  color: rgba(255,255,255,.74);
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.dynamic-island--expanded .dynamic-island__surface {
-  width: 286px;
-  border-radius: 24px 24px 12px 12px;
-  box-shadow: 0 18px 38px rgba(11, 25, 42, .24);
-}
-
-.dynamic-island--expanded .dynamic-island__copy small {
-  display: block;
-}
-
-.dynamic-island--expanded .dynamic-island__panel {
-  max-height: 84px;
-  padding: 13px 14px 14px;
-  opacity: 1;
-  transform: translateY(-2px) scale(1);
-}
-
-.dynamic-island--notice .dynamic-island__surface {
-  border-color: rgba(143, 230, 255, .34);
-  box-shadow: 0 18px 42px rgba(52, 209, 180, .22);
-}
-
 .topbar,
 .target-card,
 .section-heading,
@@ -811,12 +668,7 @@ button {
     min-height: 100vh;
     border: 0;
     border-radius: 0;
-    padding: max(12px, env(safe-area-inset-top)) 14px 104px;
-  }
-
-  .dynamic-island {
-    top: max(6px, env(safe-area-inset-top));
-    margin-top: 0;
+    padding: max(18px, env(safe-area-inset-top)) 14px 104px;
   }
 
   .desktop-note {
@@ -851,12 +703,6 @@ button {
 }
 
 @media (max-width: 370px) {
-  .dynamic-island__surface,
-  .dynamic-island__panel,
-  .dynamic-island--expanded .dynamic-island__surface {
-    width: min(286px, calc(100vw - 52px));
-  }
-
   .brand {
     font-size: 21px;
   }
@@ -887,10 +733,6 @@ button {
     animation: ringBump .46s ease;
   }
 
-  .dynamic-island--notice .dynamic-island__orb {
-    animation: islandPulse .72s ease;
-  }
-
   @keyframes floaty {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
@@ -899,12 +741,6 @@ button {
   @keyframes ringBump {
     0% { transform: scale(1); }
     42% { transform: scale(1.025); }
-    100% { transform: scale(1); }
-  }
-
-  @keyframes islandPulse {
-    0% { transform: scale(1); }
-    38% { transform: scale(1.16); }
     100% { transform: scale(1); }
   }
 
